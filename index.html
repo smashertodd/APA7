@@ -6,134 +6,151 @@
 
   <title>APA 7 Arcade</title>
 
-  <link rel="stylesheet" href="style.css?v=apa7-1" />
+  <link rel="stylesheet" href="style.css?v=apa7-udl-1" />
 
-  <!-- Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
 <body>
-  <div class="neon-toggle-container">
-    <button id="tab-student" class="neon-toggle active">← Back to Game</button>
-    <button id="tab-teacher" class="neon-toggle">Teacher Login 🔐</button>
+  <a class="skip-link" href="#main-content">Skip to main activity</a>
+
+  <div class="top-controls" aria-label="Game controls">
+    <button id="btn-readable-mode" class="neon-toggle" type="button" aria-pressed="false">
+      Readable Mode
+    </button>
+
+    <button id="tab-student" class="neon-toggle active" type="button">
+      ← Back to Game
+    </button>
+
+    <button id="tab-teacher" class="neon-toggle" type="button">
+      Teacher Login 🔐
+    </button>
   </div>
 
-  <div id="app">
+  <main id="app">
     <h1 id="app-title">APA 7 Arcade</h1>
 
-    <!-- Student Panel -->
-    <div id="panel-student">
-      <!-- Name Entry -->
-      <div id="screen-name" class="screen active">
-        <div class="card center-card" id="name-section">
-          <p class="subtitle">Enter your name to start practising APA 7 referencing.</p>
+    <div id="main-content">
+      <!-- Student Panel -->
+      <section id="panel-student" aria-label="Student game area">
+        <!-- Name Entry -->
+        <div id="screen-name" class="screen active">
+          <div class="card center-card" id="name-section">
+            <p class="subtitle">Enter your name to start practising APA 7 referencing.</p>
 
-          <div class="form-group">
+            <label class="sr-only" for="input-name">First name</label>
             <input id="input-name" type="text" placeholder="First name" autocomplete="off" />
+
+            <button id="btn-start" class="btn btn-primary" type="button">Start</button>
           </div>
-
-          <button id="btn-start" class="btn btn-primary">Start</button>
         </div>
-      </div>
 
-      <!-- Loading -->
-      <div id="screen-loading" class="screen">
-        <div class="card center-card">
-          <div class="spinner" aria-label="Loading"></div>
-          <p class="subtitle loading-text">Loading APA 7 activities…</p>
-        </div>
-      </div>
-
-      <!-- Library -->
-      <div id="screen-library" class="screen">
-        <div class="card">
-          <h2 class="section-heading">Choose an APA 7 Activity</h2>
-          <div id="library-list" class="library-list"></div>
-        </div>
-      </div>
-
-      <!-- Activity Screen -->
-      <div id="screen-activity" class="screen">
-        <div class="card">
-          <div class="activity-header">
-            <h2 id="activity-title" class="section-heading">Activity Title</h2>
-            <button id="btn-library" class="btn btn-ghost btn-sm">← All activities</button>
+        <!-- Loading -->
+        <div id="screen-loading" class="screen">
+          <div class="card center-card">
+            <div class="spinner" aria-label="Loading"></div>
+            <p class="subtitle loading-text">Loading APA 7 activities…</p>
           </div>
+        </div>
 
-          <p class="instruction" id="game-instructions"></p>
+        <!-- Library -->
+        <div id="screen-library" class="screen">
+          <div class="card">
+            <h2 class="section-heading">Choose an APA 7 Activity</h2>
+            <div id="library-list" class="library-list" aria-label="Available APA 7 activities"></div>
+          </div>
+        </div>
 
-          <div class="workspace">
-            <div class="panel-left">
-              <h3>Choices</h3>
-              <div id="choice-pool" class="pool"></div>
+        <!-- Activity Screen -->
+        <div id="screen-activity" class="screen">
+          <div class="card">
+            <div class="activity-header">
+              <h2 id="activity-title" class="section-heading">Activity Title</h2>
+              <button id="btn-library" class="btn btn-ghost btn-sm" type="button">← All activities</button>
             </div>
 
-            <div class="panel-right">
-              <h3>Answer Area</h3>
-              <div id="drop-zone" class="pool drop-zone-slots"></div>
+            <p class="instruction" id="game-instructions"></p>
+
+            <p class="instruction accessibility-instruction">
+              Accessibility option: select a choice, then select an answer space. You can also use Tab and Enter instead of dragging.
+            </p>
+
+            <div class="workspace">
+              <section class="panel-left" aria-labelledby="choices-heading">
+                <h3 id="choices-heading">Choices</h3>
+                <div id="choice-pool" class="pool" aria-label="Answer choices"></div>
+              </section>
+
+              <section class="panel-right" aria-labelledby="answer-heading">
+                <h3 id="answer-heading">Answer Area</h3>
+                <div id="drop-zone" class="pool drop-zone-slots" aria-label="Answer area"></div>
+              </section>
+            </div>
+
+            <div class="activity-footer">
+              <button id="btn-check" class="btn primary" type="button">Check Answer</button>
+              <button id="btn-retry" class="btn secondary" type="button" style="display:none;">Retry</button>
+              <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
             </div>
           </div>
+        </div>
 
-          <div class="activity-footer">
-            <button id="btn-check" class="btn primary">Check Answer</button>
-            <button id="btn-retry" class="btn secondary" style="display:none;">Retry</button>
-            <div id="feedback" class="feedback"></div>
+        <!-- Error Screen -->
+        <div id="screen-error" class="screen">
+          <div class="card center-card">
+            <h2 style="color:#fca5a5;">Oops!</h2>
+            <p id="error-message">Something went wrong.</p>
+            <button onclick="location.reload()" class="btn btn-primary" type="button" style="margin-top:15px;">Refresh Page</button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Error Screen -->
-      <div id="screen-error" class="screen">
-        <div class="card center-card">
-          <h2 style="color:#fca5a5;">Oops!</h2>
-          <p id="error-message">Something went wrong.</p>
-          <button onclick="location.reload()" class="btn btn-primary" style="margin-top:15px;">Refresh Page</button>
+      <!-- Teacher Panel -->
+      <section id="panel-teacher" class="hidden" aria-label="Teacher dashboard">
+        <div class="card">
+          <div class="teacher-header">
+            <h2>Teacher Dashboard</h2>
+
+            <a
+              href="https://docs.google.com/spreadsheets/d/1iZQd9GEMfcs-uY9rzRHIf4LMMoGe7qpcAOfbOdxQi9c/edit?gid=0#gid=0"
+              target="_blank"
+              class="btn btn-sm"
+            >
+              Edit APA Activities Sheet
+            </a>
+
+            <button id="btn-reset-session" class="btn btn-secondary btn-sm" type="button">
+              Refresh Current Session
+            </button>
+          </div>
+
+          <div id="teacher-results" class="results-container">
+            <p>Loading results...</p>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
-
-    <!-- Teacher Panel -->
-    <div id="panel-teacher" class="hidden">
-      <div class="card">
-        <div class="teacher-header">
-          <h2>Teacher Dashboard</h2>
-
-          <a
-            href="https://docs.google.com/spreadsheets/d/1iZQd9GEMfcs-uY9rzRHIf4LMMoGe7qpcAOfbOdxQi9c/edit?gid=0#gid=0"
-            target="_blank"
-            class="btn btn-sm"
-            style="background:linear-gradient(to right,#8b5cf6,#ec4899)!important;color:white!important;border:none!important;text-decoration:none;display:flex;align-items:center;"
-          >
-            Edit APA Activities Sheet
-          </a>
-
-          <button id="btn-reset-session" class="btn btn-secondary btn-sm">Refresh Current Session</button>
-        </div>
-
-        <div id="teacher-results" class="results-container">
-          <p>Loading results...</p>
-        </div>
-      </div>
-    </div>
-  </div>
+  </main>
 
   <!-- PIN Modal -->
-  <div id="pin-modal" class="hidden">
+  <div id="pin-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="pin-title">
     <div id="pin-modal-box">
-      <h3>Teacher Access</h3>
+      <h3 id="pin-title">Teacher Access</h3>
       <p>Enter your PIN to continue.</p>
 
-      <input id="pin-input" type="password" inputmode="numeric" maxlength="12" placeholder="••••••" />
+      <label class="sr-only" for="pin-input">Teacher PIN</label>
+      <input id="pin-input" type="password" maxlength="12" placeholder="••••••" />
 
       <p id="pin-error" class="pin-error" role="alert" aria-live="polite"></p>
 
       <div class="pin-actions">
-        <button id="btn-pin-cancel">Cancel</button>
-        <button id="btn-pin-submit">Enter</button>
+        <button id="btn-pin-cancel" type="button">Cancel</button>
+        <button id="btn-pin-submit" type="button">Enter</button>
       </div>
     </div>
   </div>
 
-  <script src="app.js?v=apa7-1"></script>
+  <script src="app.js?v=apa7-udl-1"></script>
 </body>
 </html>
