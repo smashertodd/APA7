@@ -1,8 +1,7 @@
 // =========================================================================
-// APA 7 Arcade — app.js
+// APA 7 Arcade — UDL app.js
 // =========================================================================
 
-// Replace these once your APA 7 Google Sheet is published as CSV.
 const LIBRARY_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQp7Q7FpByF4xuoUpKlD7Wr8OH-tkvvDvIaV9tGwYnk3z3ei82h5EbSa0T6kZZPxLJJQywhG9OPBtHS/pub?gid=0&single=true&output=csv";
 const TRACKING_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQp7Q7FpByF4xuoUpKlD7Wr8OH-tkvvDvIaV9tGwYnk3z3ei82h5EbSa0T6kZZPxLJJQywhG9OPBtHS/pub?gid=1657048725&single=true&output=csv";
 const TRACKING_URL = "https://script.google.com/macros/s/AKfycbxfh4CaL9-3mjUk5Yi4GXVJGG9aUHjHGLZXF7EaAPhShYOQsarZbzF--iePZIIr9H9Oog/exec";
@@ -20,16 +19,18 @@ let activities = {};
 let currentGame = null;
 let sessionStart = null;
 let dragSrcEl = null;
+let selectedChip = null;
 let hintsUsed = [];
 let attemptCount = 0;
 let currentLayoutMode = "paragraph";
 
 /* ============================================================
-   Safe HTML formatting for APA examples
+   Safe formatting for APA examples
 
-   Allows only:
-   <em>, </em>, <i>, </i>, <strong>, </strong>, <b>, </b>,
-   <u>, </u>, <br>
+   In the Google Sheet, you can use:
+   <em>Journal Title</em>
+   <strong>Volume</strong>
+   <br>
 ============================================================ */
 
 function safeFormatHTML(value) {
@@ -51,6 +52,14 @@ function safeFormatHTML(value) {
 
 function stripFormattingTags(value) {
   return String(value || "").replace(/<\/?(em|i|strong|b|u)>/gi, "");
+}
+
+function escapeForInlineHandler(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;")
+    .replace(/\n/g, "\\n");
 }
 
 /* ============================================================
@@ -166,6 +175,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.body.appendChild(neonModalOverlay);
 
   showScreen("screen-name");
+  restoreReadableModePreference();
 
   const safeAdd = (id, event, handler) => {
     const el = document.getElementById(id);
@@ -176,6 +186,7 @@ document.addEventListener("DOMContentLoaded", () => {
   safeAdd("btn-check", "click", checkAnswer);
   safeAdd("btn-retry", "click", retryActivity);
   safeAdd("btn-library", "click", () => showLibrary());
+  safeAdd("btn-readable-mode", "click", toggleReadableMode);
 
   safeAdd("tab-student", "click", () => switchTab("student"));
   safeAdd("tab-teacher", "click", () => promptTeacherPin());
@@ -195,9 +206,44 @@ document.addEventListener("DOMContentLoaded", () => {
   if (pinInput) {
     pinInput.addEventListener("keydown", e => {
       if (e.key === "Enter") submitPin();
+      if (e.key === "Escape") closePinModal();
     });
   }
 });
+
+/* ============================================================
+   Readable mode
+============================================================ */
+
+function toggleReadableMode() {
+  const btn = document.getElementById("btn-readable-mode");
+  const enabled = document.body.classList.toggle("readable-mode");
+
+  if (btn) {
+    btn.setAttribute("aria-pressed", enabled ? "true" : "false");
+    btn.textContent = enabled ? "Neon Mode" : "Readable Mode";
+  }
+
+  try {
+    localStorage.setItem("apa7-readable-mode", enabled ? "true" : "false");
+  } catch (e) {}
+}
+
+function restoreReadableModePreference() {
+  try {
+    const enabled = localStorage.getItem("apa7-readable-mode") === "true";
+    const btn = document.getElementById("btn-readable-mode");
+
+    if (enabled) {
+      document.body.classList.add("readable-mode");
+
+      if (btn) {
+        btn.setAttribute("aria-pressed", "true");
+        btn.textContent = "Neon Mode";
+      }
+    }
+  } catch (e) {}
+}
 
 /* ============================================================
    Screens and session
@@ -279,14 +325,6 @@ function splitCSVLine(line) {
 ============================================================ */
 
 function loadLibrary() {
-  if (
-    !LIBRARY_CSV_URL ||
-    LIBRARY_CSV_URL.includes("PASTE_APA7_ACTIVITIES_CSV_URL_HERE")
-  ) {
-    showError("APA 7 activities CSV URL has not been added yet.");
-    return;
-  }
-
   showScreen("screen-loading");
 
   const loadingScreen = document.getElementById("screen-loading");
@@ -337,30 +375,30 @@ function buildActivities(rows) {
       if (key) row[key.trim().toLowerCase().replace(/ /g, "_")] = originalRow[key];
     }
 
-    let rowTitle = (row.title || "").trim();
+    const rowTitle = (row.title || "").trim();
     if (rowTitle) lastTitle = rowTitle;
 
-    let currentTitle = lastTitle;
+    const currentTitle = lastTitle;
     if (!currentTitle) return;
 
-    let rowStatus = (row.status || "").trim().toLowerCase();
+    const rowStatusRaw = (row.status || "").trim().toLowerCase();
 
-    if (rowStatus === "active" || rowStatus === "inactive") {
-      lastStatus = rowStatus;
+    if (rowStatusRaw === "active" || rowStatusRaw === "inactive") {
+      lastStatus = rowStatusRaw;
     }
 
     if (lastStatus !== "active") return;
 
-    let rawType = (row.type || "").trim();
+    const rawType = (row.type || "").trim();
 
     if (rawType && rawType.toLowerCase() !== "distractor") {
       lastType = rawType;
     }
 
-    let rowType = (row.type || "").trim().toLowerCase();
-    let isDistractor = rowType === "distractor" || rowStatus === "distractor";
+    const rowType = (row.type || "").trim().toLowerCase();
+    const isDistractor = rowType === "distractor" || rowStatusRaw === "distractor";
 
-    let textContent = (row.text || "").trim();
+    const textContent = (row.text || "").trim();
 
     if (!textContent && !isDistractor) return;
 
@@ -422,6 +460,7 @@ function showLibrary() {
   Object.entries(activities).forEach(([id, game]) => {
     const card = document.createElement("button");
     card.className = "activity-card";
+    card.type = "button";
 
     const distractorText = game.distractors.length
       ? " + " + game.distractors.length + " distractor(s)"
@@ -445,6 +484,7 @@ function startActivity(gameId) {
   currentGame = gameId;
   hintsUsed = [];
   attemptCount = 0;
+  selectedChip = null;
 
   const gameData = activities[gameId];
   const hasGaps = gameData.parts.some(p => p.text && p.text.includes("___"));
@@ -465,38 +505,44 @@ function startActivity(gameId) {
 }
 
 function renderActivity(game) {
-  document.getElementById("activity-title").innerHTML = safeFormatHTML(game.title);
+  const titleEl = document.getElementById("activity-title");
+  if (titleEl) titleEl.innerHTML = safeFormatHTML(game.title);
+
+  const workspace = document.querySelector(".workspace");
+  const leftPanel = document.querySelector(".panel-left");
+
+  if (workspace) workspace.style.display = "grid";
+  if (leftPanel) leftPanel.style.display = "block";
 
   let instructions = "";
 
   if (currentLayoutMode === "detective") {
-    instructions = "Click the 💡 button to reveal your target. Then click the APA 7 errors or required features.";
+    instructions = "Click or use keyboard focus to select the APA 7 errors or required features. Use the hint button if you need help.";
   } else if (currentLayoutMode === "paragraph") {
-    instructions = "Drag the APA 7 reference parts into the correct order.";
+    instructions = "Build the APA 7 reference by placing each part in the correct order.";
     if (game.distractors.length > 0) instructions += " Watch out for distractors.";
   } else {
-    instructions = "Drag the correct APA 7 words, punctuation, or phrases into the gaps.";
+    instructions = "Complete the APA 7 example by placing the correct words, punctuation, or phrases into the gaps.";
     if (game.distractors.length > 0) instructions += " Watch out for distractors.";
   }
 
   if (game.overallHint) {
-    const safeOverallHint = String(game.overallHint)
-      .replace(/'/g, "\\'")
-      .replace(/"/g, "&quot;");
-
     instructions += `
-      <span
-        onclick="showNeonHint('${safeOverallHint}')"
+      <button
+        class="hint-btn-inline"
+        type="button"
+        onclick="showNeonHint('${escapeForInlineHandler(game.overallHint)}')"
         title="Click for an APA 7 hint"
-        style="margin-left:10px;cursor:pointer;font-size:1.2em;filter:drop-shadow(0 0 8px rgba(249,168,212,0.8));"
-      >💡</span>
+        aria-label="Show overall APA 7 hint"
+      >💡</button>
     `;
   }
 
-  document.getElementById("game-instructions").innerHTML = instructions;
+  const instructionsEl = document.getElementById("game-instructions");
+  if (instructionsEl) instructionsEl.innerHTML = instructions;
 
-  let answerIndexCounter = 0;
   const allSentences = [];
+  let answerIndexCounter = 0;
 
   game.parts.forEach(part => {
     if (currentLayoutMode !== "paragraph" && part.text.includes("___")) {
@@ -535,6 +581,8 @@ function renderActivity(game) {
   shuffle(allSentences);
 
   const pool = document.getElementById("choice-pool");
+  if (!pool) return;
+
   pool.innerHTML = "";
 
   allSentences.forEach((item, index) => {
@@ -542,6 +590,10 @@ function renderActivity(game) {
 
     chip.className = "sentence-chip";
     chip.draggable = true;
+    chip.tabIndex = 0;
+    chip.setAttribute("role", "button");
+    chip.setAttribute("aria-pressed", "false");
+
     chip.dataset.answerIndex = item.answerIndex;
     chip.dataset.isDistractor = item.isDistractor;
 
@@ -556,6 +608,8 @@ function renderActivity(game) {
       </span>
     `;
 
+    chip.setAttribute("aria-label", "Choice: " + stripFormattingTags(displayText));
+
     if (currentLayoutMode !== "paragraph") {
       chip.dataset.color = COLORS[index % COLORS.length];
       chip.style.backgroundColor = chip.dataset.color;
@@ -564,6 +618,13 @@ function renderActivity(game) {
 
     chip.addEventListener("dragstart", onDragStart);
     chip.addEventListener("dragend", onDragEnd);
+    chip.addEventListener("click", () => selectChip(chip));
+    chip.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        selectChip(chip);
+      }
+    });
 
     pool.appendChild(chip);
   });
@@ -572,6 +633,8 @@ function renderActivity(game) {
   pool.addEventListener("drop", e => onDropIntoPool(e, pool));
 
   const dropZone = document.getElementById("drop-zone");
+  if (!dropZone) return;
+
   dropZone.innerHTML = "";
 
   let globalSlotCounter = 0;
@@ -587,11 +650,18 @@ function renderActivity(game) {
   }
 
   const feedback = document.getElementById("feedback");
-  feedback.textContent = "";
-  feedback.className = "feedback";
+  if (feedback) {
+    feedback.textContent = "";
+    feedback.className = "feedback";
+  }
 
-  document.getElementById("btn-check").style.display = "inline-flex";
-  document.getElementById("btn-retry").style.display = "none";
+  const checkBtn = document.getElementById("btn-check");
+  const retryBtn = document.getElementById("btn-retry");
+
+  if (checkBtn) checkBtn.style.display = "inline-flex";
+  if (retryBtn) retryBtn.style.display = "none";
+
+  updateSelectableSlots();
 }
 
 function renderDetectiveMode(game, dropZone) {
@@ -616,22 +686,36 @@ function renderDetectiveMode(game, dropZone) {
 
       const wordSpan = document.createElement("span");
       wordSpan.className = "detective-word";
+      wordSpan.tabIndex = 0;
+      wordSpan.setAttribute("role", "button");
+      wordSpan.setAttribute("aria-pressed", "false");
       wordSpan.innerHTML = safeFormatHTML(rawText);
       wordSpan.dataset.isTarget = isTarget ? "true" : "false";
 
-      wordSpan.addEventListener("click", () => {
-        if (!wordSpan.classList.contains("locked")) {
-          wordSpan.classList.toggle("selected");
+      const toggleWord = () => {
+        if (wordSpan.classList.contains("locked")) return;
 
-          if (wordSpan.classList.contains("selected")) {
-            wordSpan.style.border = "2px solid #39ff14";
-            wordSpan.style.backgroundColor = "rgba(57,255,20,0.15)";
-            wordSpan.style.color = "#064e3b";
-          } else {
-            wordSpan.style.border = "2px solid transparent";
-            wordSpan.style.backgroundColor = "transparent";
-            wordSpan.style.color = "inherit";
-          }
+        wordSpan.classList.toggle("selected");
+
+        const selected = wordSpan.classList.contains("selected");
+        wordSpan.setAttribute("aria-pressed", selected ? "true" : "false");
+
+        if (selected) {
+          wordSpan.style.border = "2px solid #39ff14";
+          wordSpan.style.backgroundColor = "rgba(57,255,20,0.15)";
+          wordSpan.style.color = "#064e3b";
+        } else {
+          wordSpan.style.border = "2px solid transparent";
+          wordSpan.style.backgroundColor = "transparent";
+          wordSpan.style.color = "inherit";
+        }
+      };
+
+      wordSpan.addEventListener("click", toggleWord);
+      wordSpan.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          toggleWord();
         }
       });
 
@@ -642,8 +726,11 @@ function renderDetectiveMode(game, dropZone) {
     if (part.hint) {
       const hBtn = document.createElement("button");
       hBtn.className = "hint-btn-inline";
+      hBtn.type = "button";
       hBtn.innerHTML = "💡";
       hBtn.title = "View APA 7 hint";
+      hBtn.setAttribute("aria-label", "Show hint for sentence " + (i + 1));
+
       hBtn.onclick = () => {
         showNeonHint("Hint:\n\n" + part.hint);
         hintsUsed.push("Hint (Sentence " + (i + 1) + ")");
@@ -677,24 +764,14 @@ function renderCategorisationMode(game, dropZone, globalSlotCounter) {
       }
 
       if (sIdx < segments.length - 1) {
-        const slot = document.createElement("span");
-        slot.className = "gap-slot dropzone";
-        slot.dataset.expectedIndex = globalSlotCounter++;
-
-        slot.addEventListener("dragover", onDragOver);
-        slot.addEventListener("drop", e => onDropIntoSlot(e, slot));
-
+        const slot = createDropSlot("gap-slot dropzone", globalSlotCounter++);
         rowSpan.appendChild(slot);
 
         if (part.hint) {
-          const hBtn = document.createElement("button");
-          hBtn.className = "hint-btn-inline";
-          hBtn.innerHTML = "💡";
-          hBtn.title = "View APA 7 hint";
-          hBtn.onclick = () => {
+          const hBtn = createHintButton("View APA 7 hint", () => {
             showNeonHint("Hint:\n\n" + part.hint);
             hintsUsed.push("Hint (Gap " + globalSlotCounter + ")");
-          };
+          });
 
           rowSpan.appendChild(hBtn);
         }
@@ -723,24 +800,14 @@ function renderGapfillMode(game, dropZone, globalSlotCounter) {
       }
 
       if (sIdx < segments.length - 1) {
-        const slot = document.createElement("span");
-        slot.className = "gap-slot dropzone";
-        slot.dataset.expectedIndex = globalSlotCounter++;
-
-        slot.addEventListener("dragover", onDragOver);
-        slot.addEventListener("drop", e => onDropIntoSlot(e, slot));
-
+        const slot = createDropSlot("gap-slot dropzone", globalSlotCounter++);
         gapFillBox.appendChild(slot);
 
         if (part.hint) {
-          const hBtn = document.createElement("button");
-          hBtn.className = "hint-btn-inline";
-          hBtn.innerHTML = "💡";
-          hBtn.title = "View APA 7 hint";
-          hBtn.onclick = () => {
+          const hBtn = createHintButton("View APA 7 hint", () => {
             showNeonHint("Hint:\n\n" + part.hint);
             hintsUsed.push("Hint (Gap " + globalSlotCounter + ")");
-          };
+          });
 
           gapFillBox.appendChild(hBtn);
         }
@@ -787,6 +854,7 @@ function renderParagraphMode(game, dropZone) {
     labelDiv.style.display = "flex";
     labelDiv.style.justifyContent = "space-between";
     labelDiv.style.alignItems = "center";
+    labelDiv.style.gap = "8px";
     labelDiv.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
 
     const labelText = document.createElement("span");
@@ -797,27 +865,19 @@ function renderParagraphMode(game, dropZone) {
     labelDiv.appendChild(labelText);
 
     if (part.hint) {
-      const hintBtn = document.createElement("button");
-      hintBtn.className = "hint-btn-small";
-      hintBtn.innerHTML = "💡";
-      hintBtn.title = "View APA 7 hint";
-      hintBtn.onclick = () => {
+      const hintBtn = createHintButton("View APA 7 hint", () => {
         showNeonHint("Hint for " + stripFormattingTags(part.label || "this part") + ":\n\n" + part.hint);
         hintsUsed.push("Hint (" + stripFormattingTags(part.label || "Part " + (i + 1)) + ")");
-      };
+      });
 
+      hintBtn.className = "hint-btn-small";
       labelDiv.appendChild(hintBtn);
     }
 
     labelsColumn.appendChild(labelDiv);
 
-    const slot = document.createElement("span");
-    slot.className = "paragraph-slot dropzone";
-    slot.dataset.expectedIndex = i;
+    const slot = createDropSlot("paragraph-slot dropzone", i);
     slot.dataset.color = color;
-
-    slot.addEventListener("dragover", onDragOver);
-    slot.addEventListener("drop", e => onDropIntoSlot(e, slot));
 
     paraBuilder.appendChild(slot);
     paraBuilder.appendChild(document.createTextNode(" "));
@@ -826,6 +886,101 @@ function renderParagraphMode(game, dropZone) {
   builderContainer.appendChild(labelsColumn);
   builderContainer.appendChild(paraBuilder);
   dropZone.appendChild(builderContainer);
+}
+
+function createDropSlot(className, expectedIndex) {
+  const slot = document.createElement("span");
+
+  slot.className = className;
+  slot.dataset.expectedIndex = expectedIndex;
+  slot.tabIndex = 0;
+  slot.setAttribute("role", "button");
+  slot.setAttribute("aria-label", "Answer space " + (Number(expectedIndex) + 1));
+
+  slot.addEventListener("dragover", onDragOver);
+  slot.addEventListener("drop", e => onDropIntoSlot(e, slot));
+  slot.addEventListener("click", () => placeSelectedChip(slot));
+  slot.addEventListener("keydown", e => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      placeSelectedChip(slot);
+    }
+  });
+
+  return slot;
+}
+
+function createHintButton(label, handler) {
+  const btn = document.createElement("button");
+  btn.className = "hint-btn-inline";
+  btn.type = "button";
+  btn.innerHTML = "💡";
+  btn.title = label;
+  btn.setAttribute("aria-label", label);
+  btn.addEventListener("click", handler);
+  return btn;
+}
+
+/* ============================================================
+   Click/keyboard placement
+============================================================ */
+
+function selectChip(chip) {
+  if (!chip || chip.classList.contains("locked")) return;
+
+  if (selectedChip === chip) {
+    chip.classList.remove("selected-choice");
+    chip.setAttribute("aria-pressed", "false");
+    selectedChip = null;
+    updateSelectableSlots();
+    announceFeedback("Choice deselected.");
+    return;
+  }
+
+  document.querySelectorAll(".sentence-chip.selected-choice").forEach(c => {
+    c.classList.remove("selected-choice");
+    c.setAttribute("aria-pressed", "false");
+  });
+
+  selectedChip = chip;
+  chip.classList.add("selected-choice");
+  chip.setAttribute("aria-pressed", "true");
+
+  updateSelectableSlots();
+  announceFeedback("Choice selected. Now select an answer space.");
+}
+
+function placeSelectedChip(slot) {
+  if (!selectedChip || !slot || slot.classList.contains("correct")) return;
+
+  if (slot.children.length > 0) {
+    document.getElementById("choice-pool").appendChild(slot.children[0]);
+  }
+
+  slot.appendChild(selectedChip);
+
+  selectedChip.classList.remove("selected-choice");
+  selectedChip.setAttribute("aria-pressed", "false");
+  selectedChip = null;
+
+  updateSlotLayouts();
+  updateSelectableSlots();
+  announceFeedback("Choice placed. You can check your answer or keep working.");
+}
+
+function updateSelectableSlots() {
+  document.querySelectorAll(".dropzone").forEach(slot => {
+    if (selectedChip && !slot.classList.contains("correct")) {
+      slot.classList.add("slot-ready");
+    } else {
+      slot.classList.remove("slot-ready");
+    }
+  });
+}
+
+function announceFeedback(message) {
+  const fb = document.getElementById("feedback");
+  if (fb) fb.textContent = message;
 }
 
 /* ============================================================
@@ -865,7 +1020,10 @@ function onDropIntoSlot(e, slot) {
   }
 
   slot.appendChild(dragSrcEl);
+  selectedChip = null;
+
   updateSlotLayouts();
+  updateSelectableSlots();
 }
 
 function onDropIntoPool(e, pool) {
@@ -873,7 +1031,9 @@ function onDropIntoPool(e, pool) {
 
   if (dragSrcEl) {
     pool.appendChild(dragSrcEl);
+    selectedChip = null;
     updateSlotLayouts();
+    updateSelectableSlots();
   }
 }
 
@@ -966,14 +1126,18 @@ function checkAnswer() {
       correctCount++;
       chip.classList.add("locked");
       chip.draggable = false;
+      chip.tabIndex = -1;
       slot.classList.add("correct");
+      slot.tabIndex = -1;
     } else {
       mistakesMade = true;
       document.getElementById("choice-pool").appendChild(chip);
     }
   });
 
+  selectedChip = null;
   updateSlotLayouts();
+  updateSelectableSlots();
 
   const totalSlots = slots.length;
   let status;
@@ -987,10 +1151,16 @@ function checkAnswer() {
         ? "🎉 Perfect! You filled the APA 7 gaps correctly."
         : "🎉 Perfect! You built the APA 7 reference correctly.";
 
-    document.getElementById("btn-check").style.display = "none";
-    document.getElementById("btn-retry").style.display = "inline-flex";
+    const checkBtn = document.getElementById("btn-check");
+    const retryBtn = document.getElementById("btn-retry");
 
-    if (typeof confetti === "function") {
+    if (checkBtn) checkBtn.style.display = "none";
+    if (retryBtn) retryBtn.style.display = "inline-flex";
+
+    if (
+      typeof confetti === "function" &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       confetti({
         particleCount: 150,
         spread: 80,
@@ -1001,9 +1171,9 @@ function checkAnswer() {
   } else if (mistakesMade) {
     status = "incorrect";
     message =
-      "⚠️ Incorrect parts were sent back to the left. You locked in " +
+      "⚠️ Incorrect parts were sent back to the choices. You locked in " +
       correctCount +
-      " correct answer(s). Keep trying!";
+      " correct answer(s). Keep trying.";
   } else if (emptyCount > 0) {
     status = "partial";
     message =
@@ -1054,15 +1224,18 @@ function checkDetectiveAnswer() {
 
       w.classList.remove("selected");
       w.classList.add("locked");
+      w.setAttribute("aria-pressed", "true");
       w.style.border = "2px solid #39ff14";
       w.style.backgroundColor = "rgba(57,255,20,0.25)";
       w.style.color = "#064e3b";
       w.style.fontWeight = "bold";
       w.style.cursor = "default";
+      w.tabIndex = -1;
     } else if (isSelected && !isTarget) {
       mistakesMade = true;
 
       w.classList.remove("selected");
+      w.setAttribute("aria-pressed", "false");
       w.style.border = "2px solid transparent";
       w.style.backgroundColor = "transparent";
       w.style.color = "inherit";
@@ -1080,10 +1253,16 @@ function checkDetectiveAnswer() {
     status = "correct";
     message = "🎉 Perfect APA detective work!";
 
-    document.getElementById("btn-check").style.display = "none";
-    document.getElementById("btn-retry").style.display = "inline-flex";
+    const checkBtn = document.getElementById("btn-check");
+    const retryBtn = document.getElementById("btn-retry");
 
-    if (typeof confetti === "function") {
+    if (checkBtn) checkBtn.style.display = "none";
+    if (retryBtn) retryBtn.style.display = "inline-flex";
+
+    if (
+      typeof confetti === "function" &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       confetti({
         particleCount: 150,
         spread: 80,
@@ -1096,7 +1275,7 @@ function checkDetectiveAnswer() {
     message =
       "⚠️ Incorrect selections popped back to normal. You found " +
       correctCount +
-      " correct item(s). Keep hunting!";
+      " correct item(s). Keep hunting.";
   } else if (emptyCount > 0) {
     status = "partial";
     message =
@@ -1119,6 +1298,7 @@ function retryActivity() {
   const currentAttempts = attemptCount;
   const currentHints = [...hintsUsed];
 
+  selectedChip = null;
   renderActivity(activities[currentGame]);
 
   attemptCount = currentAttempts;
@@ -1130,11 +1310,6 @@ function retryActivity() {
 ============================================================ */
 
 function trackAttempt(status, attempt, details) {
-  if (!TRACKING_URL || TRACKING_URL.includes("PASTE_APA7_APPS_SCRIPT_EXEC_URL_HERE")) {
-    console.log("Tracking skipped:", { studentName, currentGame, attempt, status, details });
-    return;
-  }
-
   const params = new URLSearchParams({
     name: studentName,
     game_id: currentGame,
@@ -1210,11 +1385,6 @@ function resetSession() {
 function loadTeacherData() {
   const container = document.getElementById("teacher-results");
   if (!container) return;
-
-  if (!TRACKING_CSV_URL || TRACKING_CSV_URL.includes("PASTE_APA7_TRACKING_CSV_URL_HERE")) {
-    container.innerHTML = "<p>Tracking CSV URL has not been added yet.</p>";
-    return;
-  }
 
   container.innerHTML = "<p>Loading results...</p>";
 
