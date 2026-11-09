@@ -3,9 +3,9 @@
 // =========================================================================
 
 // Replace these once your APA 7 Google Sheet is published as CSV.
-const LIBRARY_CSV_URL = "PASTE_APA7_ACTIVITIES_CSV_URL_HERE";
-const TRACKING_CSV_URL = "PASTE_APA7_TRACKING_CSV_URL_HERE";
-const TRACKING_URL = "PASTE_APA7_APPS_SCRIPT_EXEC_URL_HERE";
+const LIBRARY_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQp7Q7FpByF4xuoUpKlD7Wr8OH-tkvvDvIaV9tGwYnk3z3ei82h5EbSa0T6kZZPxLJJQywhG9OPBtHS/pub?gid=0&single=true&output=csv";
+const TRACKING_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQp7Q7FpByF4xuoUpKlD7Wr8OH-tkvvDvIaV9tGwYnk3z3ei82h5EbSa0T6kZZPxLJJQywhG9OPBtHS/pub?gid=1657048725&single=true&output=csv";
+const TRACKING_URL = "https://script.google.com/macros/s/AKfycbxfh4CaL9-3mjUk5Yi4GXVJGG9aUHjHGLZXF7EaAPhShYOQsarZbzF--iePZIIr9H9Oog/exec";
 
 const TEACHER_PIN = "@pple";
 const REFRESH_INTERVAL = 15000;
