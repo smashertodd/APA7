@@ -1,5 +1,5 @@
 // =========================================================================
-// APA 7 Arcade — UDL app.js
+// APA 7 Arcade — UDL/WCAG app.js
 // =========================================================================
 
 const LIBRARY_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQp7Q7FpByF4xuoUpKlD7Wr8OH-tkvvDvIaV9tGwYnk3z3ei82h5EbSa0T6kZZPxLJJQywhG9OPBtHS/pub?gid=0&single=true&output=csv";
@@ -10,8 +10,8 @@ const TEACHER_PIN = "@pple";
 const REFRESH_INTERVAL = 15000;
 
 const COLORS = [
-  "#f9a8d4", "#d8b4fe", "#a5b4fc", "#7dd3fc", "#5eead4",
-  "#86efac", "#fde047", "#fdba74", "#fca5a5", "#c4b5fd"
+  "#bfe9e6", "#d9f0f7", "#e5ddf7", "#f7d8e8", "#f8e6bf",
+  "#dff3d8", "#fde2d2", "#dbeafe", "#ede9fe", "#fce7f3"
 ];
 
 let studentName = "";
@@ -23,14 +23,11 @@ let selectedChip = null;
 let hintsUsed = [];
 let attemptCount = 0;
 let currentLayoutMode = "paragraph";
+let lastFocusedBeforeModal = null;
+let lastFocusedBeforePin = null;
 
 /* ============================================================
    Safe formatting for APA examples
-
-   In the Google Sheet, you can use:
-   <em>Journal Title</em>
-   <strong>Volume</strong>
-   <br>
 ============================================================ */
 
 function safeFormatHTML(value) {
@@ -51,7 +48,7 @@ function safeFormatHTML(value) {
 }
 
 function stripFormattingTags(value) {
-  return String(value || "").replace(/<\/?(em|i|strong|b|u)>/gi, "");
+  return String(value || "").replace(/<\/?(em|i|strong|b|u|br)>/gi, "");
 }
 
 function escapeForInlineHandler(value) {
@@ -63,7 +60,7 @@ function escapeForInlineHandler(value) {
 }
 
 /* ============================================================
-   Hint modal
+   Accessible hint modal
 ============================================================ */
 
 window.showNeonHint = function(message) {
@@ -76,87 +73,70 @@ window.showNeonHint = function(message) {
 
 const neonModalOverlay = document.createElement("div");
 neonModalOverlay.id = "neon-hint-overlay";
-neonModalOverlay.style.cssText = `
-  display: none;
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(5px);
-  z-index: 10000;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-`;
+neonModalOverlay.setAttribute("role", "dialog");
+neonModalOverlay.setAttribute("aria-modal", "true");
+neonModalOverlay.setAttribute("aria-labelledby", "neon-hint-title");
+neonModalOverlay.setAttribute("aria-describedby", "neon-hint-text-dynamic");
+neonModalOverlay.tabIndex = -1;
 
 const neonModalBox = document.createElement("div");
-neonModalBox.style.cssText = `
-  background: rgba(30, 30, 46, 0.95);
-  border: 2px solid #ec4899;
-  box-shadow: 0 0 25px rgba(236, 72, 153, 0.6), inset 0 0 15px rgba(139, 92, 246, 0.4);
-  border-radius: 20px;
-  padding: 35px;
-  max-width: 80%;
-  width: 450px;
-  text-align: center;
-  transform: scale(0.8);
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-`;
+neonModalBox.id = "neon-hint-box";
+neonModalBox.setAttribute("role", "document");
 
 const neonModalTitle = document.createElement("h3");
-neonModalTitle.innerHTML = "💡 APA 7 Hint";
-neonModalTitle.style.cssText = `
-  margin-top: 0;
-  color: #f9a8d4;
-  text-shadow: 0 0 10px #ec4899;
-  margin-bottom: 20px;
-  font-size: 2rem;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-`;
+neonModalTitle.id = "neon-hint-title";
+neonModalTitle.textContent = "APA 7 hint";
 
 const neonModalText = document.createElement("p");
 neonModalText.id = "neon-hint-text-dynamic";
-neonModalText.style.cssText = `
-  color: #e2e8f0;
-  font-size: 1.2rem;
-  line-height: 1.5;
-  margin-bottom: 25px;
-  white-space: pre-line;
-`;
 
 const neonModalInstruction = document.createElement("small");
-neonModalInstruction.innerHTML = "(Click anywhere to close)";
-neonModalInstruction.style.cssText = `
-  display: block;
-  color: #8b5cf6;
-  font-size: 0.95rem;
-  opacity: 0.8;
-  font-style: italic;
-`;
+neonModalInstruction.textContent = "Press Escape or select Close to return to the activity.";
+
+const neonModalClose = document.createElement("button");
+neonModalClose.type = "button";
+neonModalClose.className = "btn btn-primary btn-sm";
+neonModalClose.textContent = "Close hint";
+neonModalClose.addEventListener("click", closeNeonModal);
 
 neonModalBox.appendChild(neonModalTitle);
 neonModalBox.appendChild(neonModalText);
 neonModalBox.appendChild(neonModalInstruction);
+neonModalBox.appendChild(neonModalClose);
 neonModalOverlay.appendChild(neonModalBox);
 
 window.openNeonModal = function(message) {
+  lastFocusedBeforeModal = document.activeElement;
   neonModalText.innerText = message;
   neonModalOverlay.style.display = "flex";
 
   setTimeout(() => {
-    neonModalOverlay.style.opacity = "1";
-    neonModalBox.style.transform = "scale(1)";
+    neonModalOverlay.classList.add("is-open");
+    neonModalClose.focus();
   }, 10);
 };
 
-neonModalOverlay.addEventListener("click", () => {
-  neonModalOverlay.style.opacity = "0";
-  neonModalBox.style.transform = "scale(0.8)";
+function closeNeonModal() {
+  neonModalOverlay.classList.remove("is-open");
 
   setTimeout(() => {
     neonModalOverlay.style.display = "none";
-  }, 300);
+    if (lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === "function") {
+      lastFocusedBeforeModal.focus();
+    }
+  }, 120);
+}
+
+neonModalOverlay.addEventListener("click", e => {
+  if (e.target === neonModalOverlay) closeNeonModal();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    if (neonModalOverlay.style.display === "flex") closeNeonModal();
+    const pinModal = document.getElementById("pin-modal");
+    if (pinModal && !pinModal.classList.contains("hidden")) closePinModal();
+  }
 });
 
 /* ============================================================
@@ -173,7 +153,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.body.appendChild(neonModalOverlay);
-
   showScreen("screen-name");
   restoreReadableModePreference();
 
@@ -187,10 +166,8 @@ document.addEventListener("DOMContentLoaded", () => {
   safeAdd("btn-retry", "click", retryActivity);
   safeAdd("btn-library", "click", () => showLibrary());
   safeAdd("btn-readable-mode", "click", toggleReadableMode);
-
   safeAdd("tab-student", "click", () => switchTab("student"));
   safeAdd("tab-teacher", "click", () => promptTeacherPin());
-
   safeAdd("btn-pin-submit", "click", submitPin);
   safeAdd("btn-pin-cancel", "click", closePinModal);
   safeAdd("btn-reset-session", "click", resetSession);
@@ -221,7 +198,7 @@ function toggleReadableMode() {
 
   if (btn) {
     btn.setAttribute("aria-pressed", enabled ? "true" : "false");
-    btn.textContent = enabled ? "Neon Mode" : "Readable Mode";
+    btn.textContent = enabled ? "Colour Mode" : "Readable Mode";
   }
 
   try {
@@ -236,10 +213,9 @@ function restoreReadableModePreference() {
 
     if (enabled) {
       document.body.classList.add("readable-mode");
-
       if (btn) {
         btn.setAttribute("aria-pressed", "true");
-        btn.textContent = "Neon Mode";
+        btn.textContent = "Colour Mode";
       }
     }
   } catch (e) {}
@@ -250,15 +226,26 @@ function restoreReadableModePreference() {
 ============================================================ */
 
 function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".screen").forEach(s => {
+    s.classList.remove("active");
+    s.setAttribute("hidden", "hidden");
+  });
+
   const el = document.getElementById(id);
-  if (el) el.classList.add("active");
+  if (el) {
+    el.classList.add("active");
+    el.removeAttribute("hidden");
+
+    const heading = el.querySelector("h2, h3, input, button");
+    if (heading && id !== "screen-loading") {
+      setTimeout(() => heading.focus?.(), 50);
+    }
+  }
 }
 
 function handleNameSubmit() {
   const input = document.getElementById("input-name");
   let name = input ? input.value.trim() : "";
-
   if (!name) name = "Student";
 
   studentName = name;
@@ -272,7 +259,6 @@ function handleNameSubmit() {
 function parseCSV(text) {
   const rows = [];
   const lines = text.split(/\r?\n/);
-
   if (lines.length === 0) return rows;
 
   const headers = splitCSVLine(lines[0]);
@@ -327,21 +313,10 @@ function splitCSVLine(line) {
 function loadLibrary() {
   showScreen("screen-loading");
 
-  const loadingScreen = document.getElementById("screen-loading");
-  if (loadingScreen) {
-    loadingScreen.innerHTML = `
-      <div class="card center-card">
-        <div class="spinner" aria-label="Loading"></div>
-        <p class="subtitle loading-text">Loading APA 7 activities…</p>
-      </div>
-    `;
-  }
-
   fetch(LIBRARY_CSV_URL + "&t=" + Date.now())
     .then(r => r.text())
     .then(text => {
       buildActivities(parseCSV(text));
-
       const activeGames = Object.keys(activities);
 
       if (activeGames.length === 0) {
@@ -357,13 +332,12 @@ function loadLibrary() {
     })
     .catch(e => {
       console.error(e);
-      showError("Couldn't load APA 7 activities.");
+      showError("Couldn't load APA 7 activities. Check that the activities sheet is published as CSV.");
     });
 }
 
 function buildActivities(rows) {
   activities = {};
-
   let lastTitle = "";
   let lastStatus = "";
   let lastType = "";
@@ -382,7 +356,6 @@ function buildActivities(rows) {
     if (!currentTitle) return;
 
     const rowStatusRaw = (row.status || "").trim().toLowerCase();
-
     if (rowStatusRaw === "active" || rowStatusRaw === "inactive") {
       lastStatus = rowStatusRaw;
     }
@@ -390,14 +363,12 @@ function buildActivities(rows) {
     if (lastStatus !== "active") return;
 
     const rawType = (row.type || "").trim();
-
     if (rawType && rawType.toLowerCase() !== "distractor") {
       lastType = rawType;
     }
 
     const rowType = (row.type || "").trim().toLowerCase();
     const isDistractor = rowType === "distractor" || rowStatusRaw === "distractor";
-
     const textContent = (row.text || "").trim();
 
     if (!textContent && !isDistractor) return;
@@ -418,7 +389,6 @@ function buildActivities(rows) {
 
     let extractedLabels = [];
     let processedText = textContent;
-
     const regex = /\[\[(.*?)\]\]/g;
     let match;
 
@@ -426,7 +396,7 @@ function buildActivities(rows) {
       extractedLabels.push(match[1].trim());
     }
 
-    if (lastType.toLowerCase().includes("detective")) {
+    if ((lastType || "").toLowerCase().includes("detective")) {
       processedText = textContent;
     } else if (extractedLabels.length > 0) {
       processedText = textContent.replace(regex, "___");
@@ -463,13 +433,18 @@ function showLibrary() {
     card.type = "button";
 
     const distractorText = game.distractors.length
-      ? " + " + game.distractors.length + " distractor(s)"
+      ? " plus " + game.distractors.length + " distractor" + (game.distractors.length > 1 ? "s" : "")
       : "";
 
     card.innerHTML = `
       <span class="card-title">${safeFormatHTML(game.title)}</span>
-      <span class="card-meta">${game.parts.length} part(s)${distractorText}</span>
+      <span class="card-meta">${game.parts.length} part${game.parts.length === 1 ? "" : "s"}${distractorText}</span>
     `;
+
+    card.setAttribute(
+      "aria-label",
+      safeText(`${game.title}. ${game.parts.length} parts${distractorText}. Start activity.`)
+    );
 
     card.addEventListener("click", () => startActivity(id));
     list.appendChild(card);
@@ -492,10 +467,10 @@ function startActivity(gameId) {
 
   if (typeStr.includes("detective")) {
     currentLayoutMode = "detective";
-  } else if (!hasGaps) {
-    currentLayoutMode = "paragraph";
   } else if (typeStr.includes("categorisation") || typeStr.includes("categorize")) {
     currentLayoutMode = "categorisation";
+  } else if (!hasGaps) {
+    currentLayoutMode = "paragraph";
   } else {
     currentLayoutMode = "gapfill";
   }
@@ -506,20 +481,25 @@ function startActivity(gameId) {
 
 function renderActivity(game) {
   const titleEl = document.getElementById("activity-title");
-  if (titleEl) titleEl.innerHTML = safeFormatHTML(game.title);
+  if (titleEl) {
+    titleEl.innerHTML = safeFormatHTML(game.title);
+    titleEl.tabIndex = -1;
+  }
 
   const workspace = document.querySelector(".workspace");
   const leftPanel = document.querySelector(".panel-left");
-
   if (workspace) workspace.style.display = "grid";
   if (leftPanel) leftPanel.style.display = "block";
 
   let instructions = "";
 
   if (currentLayoutMode === "detective") {
-    instructions = "Click or use keyboard focus to select the APA 7 errors or required features. Use the hint button if you need help.";
+    instructions = "Select the APA 7 errors or required features. Use the hint button if you need support.";
   } else if (currentLayoutMode === "paragraph") {
     instructions = "Build the APA 7 reference by placing each part in the correct order.";
+    if (game.distractors.length > 0) instructions += " Watch out for distractors.";
+  } else if (currentLayoutMode === "categorisation") {
+    instructions = "Match each reference example with the correct category.";
     if (game.distractors.length > 0) instructions += " Watch out for distractors.";
   } else {
     instructions = "Complete the APA 7 example by placing the correct words, punctuation, or phrases into the gaps.";
@@ -532,9 +512,9 @@ function renderActivity(game) {
         class="hint-btn-inline"
         type="button"
         onclick="showNeonHint('${escapeForInlineHandler(game.overallHint)}')"
-        title="Click for an APA 7 hint"
+        title="Show APA 7 hint"
         aria-label="Show overall APA 7 hint"
-      >💡</button>
+      >Hint</button>
     `;
   }
 
@@ -582,18 +562,15 @@ function renderActivity(game) {
 
   const pool = document.getElementById("choice-pool");
   if (!pool) return;
-
   pool.innerHTML = "";
 
   allSentences.forEach((item, index) => {
     const chip = document.createElement("div");
-
     chip.className = "sentence-chip";
     chip.draggable = true;
     chip.tabIndex = 0;
     chip.setAttribute("role", "button");
     chip.setAttribute("aria-pressed", "false");
-
     chip.dataset.answerIndex = item.answerIndex;
     chip.dataset.isDistractor = item.isDistractor;
 
@@ -603,12 +580,13 @@ function renderActivity(game) {
         : item.text;
 
     chip.innerHTML = `
-      <span style="pointer-events:none;flex:1;padding-right:10px;">
-        ${safeFormatHTML(displayText)}
-      </span>
+      <span class="chip-text">${safeFormatHTML(displayText)}</span>
     `;
 
-    chip.setAttribute("aria-label", "Choice: " + stripFormattingTags(displayText));
+    chip.setAttribute(
+      "aria-label",
+      "Choice: " + safeText(stripFormattingTags(displayText)) + ". Select this choice, then select an answer space."
+    );
 
     if (currentLayoutMode !== "paragraph") {
       chip.dataset.color = COLORS[index % COLORS.length];
@@ -634,7 +612,6 @@ function renderActivity(game) {
 
   const dropZone = document.getElementById("drop-zone");
   if (!dropZone) return;
-
   dropZone.innerHTML = "";
 
   let globalSlotCounter = 0;
@@ -653,13 +630,15 @@ function renderActivity(game) {
   if (feedback) {
     feedback.textContent = "";
     feedback.className = "feedback";
+    feedback.setAttribute("role", "status");
+    feedback.setAttribute("aria-live", "polite");
+    feedback.setAttribute("aria-atomic", "true");
   }
 
   const checkBtn = document.getElementById("btn-check");
   const retryBtn = document.getElementById("btn-retry");
-
-  if (checkBtn) checkBtn.style.display = "inline-flex";
-  if (retryBtn) retryBtn.style.display = "none";
+  if (checkBtn) checkBtn.hidden = false;
+  if (retryBtn) retryBtn.hidden = true;
 
   updateSelectableSlots();
 }
@@ -667,7 +646,6 @@ function renderActivity(game) {
 function renderDetectiveMode(game, dropZone) {
   const leftPanel = document.querySelector(".panel-left");
   const workspace = document.querySelector(".workspace");
-
   if (leftPanel) leftPanel.style.display = "none";
   if (workspace) workspace.style.display = "block";
 
@@ -675,7 +653,8 @@ function renderDetectiveMode(game, dropZone) {
   detectiveBox.className = "detective-paragraph gap-fill-box";
 
   game.parts.forEach((part, i) => {
-    const pDiv = document.createElement("span");
+    const pDiv = document.createElement("p");
+    pDiv.className = "detective-line";
 
     const regex = /\[\[(.*?)\]\]|\{(.*?)\}|([^\s]+)/g;
     let match;
@@ -683,32 +662,21 @@ function renderDetectiveMode(game, dropZone) {
     while ((match = regex.exec(part.text || "")) !== null) {
       const rawText = match[1] || match[2] || match[3];
       const isTarget = match[1] !== undefined;
-
       const wordSpan = document.createElement("span");
+
       wordSpan.className = "detective-word";
       wordSpan.tabIndex = 0;
       wordSpan.setAttribute("role", "button");
       wordSpan.setAttribute("aria-pressed", "false");
+      wordSpan.setAttribute("aria-label", "Selectable text: " + safeText(stripFormattingTags(rawText)));
       wordSpan.innerHTML = safeFormatHTML(rawText);
       wordSpan.dataset.isTarget = isTarget ? "true" : "false";
 
       const toggleWord = () => {
         if (wordSpan.classList.contains("locked")) return;
-
         wordSpan.classList.toggle("selected");
-
         const selected = wordSpan.classList.contains("selected");
         wordSpan.setAttribute("aria-pressed", selected ? "true" : "false");
-
-        if (selected) {
-          wordSpan.style.border = "2px solid #39ff14";
-          wordSpan.style.backgroundColor = "rgba(57,255,20,0.15)";
-          wordSpan.style.color = "#064e3b";
-        } else {
-          wordSpan.style.border = "2px solid transparent";
-          wordSpan.style.backgroundColor = "transparent";
-          wordSpan.style.color = "inherit";
-        }
       };
 
       wordSpan.addEventListener("click", toggleWord);
@@ -724,20 +692,11 @@ function renderDetectiveMode(game, dropZone) {
     }
 
     if (part.hint) {
-      const hBtn = document.createElement("button");
-      hBtn.className = "hint-btn-inline";
-      hBtn.type = "button";
-      hBtn.innerHTML = "💡";
-      hBtn.title = "View APA 7 hint";
-      hBtn.setAttribute("aria-label", "Show hint for sentence " + (i + 1));
-
-      hBtn.onclick = () => {
+      const hBtn = createHintButton("Show hint for item " + (i + 1), () => {
         showNeonHint("Hint:\n\n" + part.hint);
-        hintsUsed.push("Hint (Sentence " + (i + 1) + ")");
-      };
-
+        hintsUsed.push("Hint (Item " + (i + 1) + ")");
+      });
       pDiv.appendChild(hBtn);
-      pDiv.appendChild(document.createTextNode(" "));
     }
 
     detectiveBox.appendChild(pDiv);
@@ -751,7 +710,7 @@ function renderCategorisationMode(game, dropZone, globalSlotCounter) {
   gapFillBox.className = "gap-fill-box";
 
   game.parts.forEach(part => {
-    const rowSpan = document.createElement("span");
+    const rowSpan = document.createElement("p");
     rowSpan.className = "gap-row";
 
     const segments = (part.text || "").split("___");
@@ -768,18 +727,16 @@ function renderCategorisationMode(game, dropZone, globalSlotCounter) {
         rowSpan.appendChild(slot);
 
         if (part.hint) {
-          const hBtn = createHintButton("View APA 7 hint", () => {
+          const hBtn = createHintButton("Show APA 7 hint", () => {
             showNeonHint("Hint:\n\n" + part.hint);
             hintsUsed.push("Hint (Gap " + globalSlotCounter + ")");
           });
-
           rowSpan.appendChild(hBtn);
         }
       }
     });
 
     gapFillBox.appendChild(rowSpan);
-    gapFillBox.appendChild(document.createTextNode(" "));
   });
 
   dropZone.appendChild(gapFillBox);
@@ -790,31 +747,32 @@ function renderGapfillMode(game, dropZone, globalSlotCounter) {
   gapFillBox.className = "gap-fill-box";
 
   game.parts.forEach(part => {
+    const line = document.createElement("p");
+    line.className = "gap-row";
     const segments = (part.text || "").split("___");
 
     segments.forEach((seg, sIdx) => {
       if (seg) {
         const span = document.createElement("span");
         span.innerHTML = safeFormatHTML(seg);
-        gapFillBox.appendChild(span);
+        line.appendChild(span);
       }
 
       if (sIdx < segments.length - 1) {
         const slot = createDropSlot("gap-slot dropzone", globalSlotCounter++);
-        gapFillBox.appendChild(slot);
+        line.appendChild(slot);
 
         if (part.hint) {
-          const hBtn = createHintButton("View APA 7 hint", () => {
+          const hBtn = createHintButton("Show APA 7 hint", () => {
             showNeonHint("Hint:\n\n" + part.hint);
             hintsUsed.push("Hint (Gap " + globalSlotCounter + ")");
           });
-
-          gapFillBox.appendChild(hBtn);
+          line.appendChild(hBtn);
         }
       }
     });
 
-    gapFillBox.appendChild(document.createTextNode(" "));
+    gapFillBox.appendChild(line);
   });
 
   dropZone.appendChild(gapFillBox);
@@ -823,53 +781,35 @@ function renderGapfillMode(game, dropZone, globalSlotCounter) {
 function renderParagraphMode(game, dropZone) {
   const workspace = document.querySelector(".workspace");
   const leftPanel = document.querySelector(".panel-left");
-
   if (workspace) workspace.style.display = "grid";
   if (leftPanel) leftPanel.style.display = "block";
 
   const builderContainer = document.createElement("div");
-  builderContainer.style.display = "flex";
-  builderContainer.style.gap = "20px";
-  builderContainer.style.width = "100%";
-  builderContainer.style.alignItems = "flex-start";
+  builderContainer.className = "paragraph-builder";
 
   const labelsColumn = document.createElement("div");
-  labelsColumn.style.display = "flex";
-  labelsColumn.style.flexDirection = "column";
-  labelsColumn.style.gap = "15px";
-  labelsColumn.style.width = "220px";
-  labelsColumn.style.flexShrink = "0";
+  labelsColumn.className = "labels-column";
+  labelsColumn.setAttribute("aria-label", "Reference part labels");
 
   const paraBuilder = document.createElement("div");
-  paraBuilder.className = "gap-fill-box";
-  paraBuilder.style.flexGrow = "1";
+  paraBuilder.className = "gap-fill-box paragraph-answer";
 
   game.parts.forEach((part, i) => {
     const color = COLORS[i % COLORS.length];
 
     const labelDiv = document.createElement("div");
+    labelDiv.className = "part-label";
     labelDiv.style.backgroundColor = color;
-    labelDiv.style.padding = "12px 16px";
-    labelDiv.style.borderRadius = "8px";
-    labelDiv.style.display = "flex";
-    labelDiv.style.justifyContent = "space-between";
-    labelDiv.style.alignItems = "center";
-    labelDiv.style.gap = "8px";
-    labelDiv.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
 
     const labelText = document.createElement("span");
     labelText.innerHTML = safeFormatHTML((i + 1) + ". " + (part.label || "Part " + (i + 1)));
-    labelText.style.fontWeight = "700";
-    labelText.style.color = "#0f172a";
-
     labelDiv.appendChild(labelText);
 
     if (part.hint) {
-      const hintBtn = createHintButton("View APA 7 hint", () => {
+      const hintBtn = createHintButton("Show hint for " + stripFormattingTags(part.label || "part " + (i + 1)), () => {
         showNeonHint("Hint for " + stripFormattingTags(part.label || "this part") + ":\n\n" + part.hint);
         hintsUsed.push("Hint (" + stripFormattingTags(part.label || "Part " + (i + 1)) + ")");
       });
-
       hintBtn.className = "hint-btn-small";
       labelDiv.appendChild(hintBtn);
     }
@@ -878,7 +818,6 @@ function renderParagraphMode(game, dropZone) {
 
     const slot = createDropSlot("paragraph-slot dropzone", i);
     slot.dataset.color = color;
-
     paraBuilder.appendChild(slot);
     paraBuilder.appendChild(document.createTextNode(" "));
   });
@@ -890,12 +829,14 @@ function renderParagraphMode(game, dropZone) {
 
 function createDropSlot(className, expectedIndex) {
   const slot = document.createElement("span");
-
   slot.className = className;
   slot.dataset.expectedIndex = expectedIndex;
   slot.tabIndex = 0;
   slot.setAttribute("role", "button");
-  slot.setAttribute("aria-label", "Answer space " + (Number(expectedIndex) + 1));
+  slot.setAttribute(
+    "aria-label",
+    "Answer space " + (Number(expectedIndex) + 1) + ". Select this space to place the selected choice."
+  );
 
   slot.addEventListener("dragover", onDragOver);
   slot.addEventListener("drop", e => onDropIntoSlot(e, slot));
@@ -914,7 +855,7 @@ function createHintButton(label, handler) {
   const btn = document.createElement("button");
   btn.className = "hint-btn-inline";
   btn.type = "button";
-  btn.innerHTML = "💡";
+  btn.textContent = "Hint";
   btn.title = label;
   btn.setAttribute("aria-label", label);
   btn.addEventListener("click", handler);
@@ -945,7 +886,6 @@ function selectChip(chip) {
   selectedChip = chip;
   chip.classList.add("selected-choice");
   chip.setAttribute("aria-pressed", "true");
-
   updateSelectableSlots();
   announceFeedback("Choice selected. Now select an answer space.");
 }
@@ -958,7 +898,6 @@ function placeSelectedChip(slot) {
   }
 
   slot.appendChild(selectedChip);
-
   selectedChip.classList.remove("selected-choice");
   selectedChip.setAttribute("aria-pressed", "false");
   selectedChip = null;
@@ -980,7 +919,12 @@ function updateSelectableSlots() {
 
 function announceFeedback(message) {
   const fb = document.getElementById("feedback");
-  if (fb) fb.textContent = message;
+  if (fb) {
+    fb.setAttribute("role", "status");
+    fb.setAttribute("aria-live", "polite");
+    fb.setAttribute("aria-atomic", "true");
+    fb.textContent = message;
+  }
 }
 
 /* ============================================================
@@ -1002,7 +946,6 @@ function onDragEnd() {
 function onDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
-
   if (this.classList.contains("dropzone")) {
     this.classList.add("drag-over");
   }
@@ -1010,7 +953,6 @@ function onDragOver(e) {
 
 function onDropIntoSlot(e, slot) {
   e.preventDefault();
-
   slot.classList.remove("drag-over");
 
   if (!dragSrcEl || slot.classList.contains("correct")) return;
@@ -1021,7 +963,6 @@ function onDropIntoSlot(e, slot) {
 
   slot.appendChild(dragSrcEl);
   selectedChip = null;
-
   updateSlotLayouts();
   updateSelectableSlots();
 }
@@ -1043,7 +984,6 @@ function updateSlotLayouts() {
 
     if (slot.children.length > 0) {
       slot.classList.add("filled");
-
       const chip = slot.children[0];
       chip.classList.add("in-paragraph");
 
@@ -1053,7 +993,7 @@ function updateSlotLayouts() {
 
         if (row && currentLayoutMode === "categorisation") {
           row.style.backgroundColor = chip.dataset.color;
-          row.style.color = "#000";
+          row.style.color = "#0f172a";
         }
       } else {
         chip.style.backgroundColor = slot.dataset.color;
@@ -1077,8 +1017,6 @@ function updateSlotLayouts() {
     } else {
       chip.style.backgroundColor = "";
     }
-
-    chip.style.outline = "none";
   });
 }
 
@@ -1093,12 +1031,10 @@ function checkAnswer() {
   }
 
   const slots = document.querySelectorAll(".dropzone");
-
   let correctCount = 0;
   let emptyCount = 0;
   let distractorCount = 0;
   let mistakesMade = false;
-
   attemptCount++;
 
   slots.forEach(slot => {
@@ -1129,6 +1065,7 @@ function checkAnswer() {
       chip.tabIndex = -1;
       slot.classList.add("correct");
       slot.tabIndex = -1;
+      slot.setAttribute("aria-label", "Correct answer space " + (Number(expected) + 1));
     } else {
       mistakesMade = true;
       document.getElementById("choice-pool").appendChild(chip);
@@ -1145,35 +1082,35 @@ function checkAnswer() {
 
   if (correctCount === totalSlots) {
     status = "correct";
-
     message =
       currentLayoutMode !== "paragraph"
-        ? "🎉 Perfect! You filled the APA 7 gaps correctly."
-        : "🎉 Perfect! You built the APA 7 reference correctly.";
+        ? "Correct. You filled the APA 7 gaps."
+        : "Correct. You built the APA 7 reference.";
 
     const checkBtn = document.getElementById("btn-check");
     const retryBtn = document.getElementById("btn-retry");
-
-    if (checkBtn) checkBtn.style.display = "none";
-    if (retryBtn) retryBtn.style.display = "inline-flex";
+    if (checkBtn) checkBtn.hidden = true;
+    if (retryBtn) retryBtn.hidden = false;
 
     if (
       typeof confetti === "function" &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
       confetti({
-        particleCount: 150,
-        spread: 80,
+        particleCount: 120,
+        spread: 70,
         origin: { y: 0.6 },
-        colors: ["#ec4899", "#8b5cf6", "#4ade80", "#fde047"]
+        colors: ["#007c89", "#0f766e", "#f59e0b", "#8b5cf6"]
       });
     }
   } else if (mistakesMade) {
     status = "incorrect";
     message =
-      "⚠️ Incorrect parts were sent back to the choices. You locked in " +
+      "Some parts were returned to the choices. You locked in " +
       correctCount +
-      " correct answer(s). Keep trying.";
+      " correct answer" +
+      (correctCount === 1 ? "" : "s") +
+      ". Keep trying.";
   } else if (emptyCount > 0) {
     status = "partial";
     message =
@@ -1182,21 +1119,14 @@ function checkAnswer() {
       " locked in.";
   }
 
-  const fb = document.getElementById("feedback");
-
-  if (fb) {
-    fb.textContent = message;
-    fb.className = "feedback " + status;
-  }
+  setFeedback(message, status);
 
   const details = ["Score: " + correctCount + "/" + totalSlots];
-
-  if (distractorCount > 0) details.push("⚠️ Fell for distractors");
-
+  if (distractorCount > 0) details.push("Distractor selected");
   details.push(
     hintsUsed.length > 0
-      ? "💡 Hints: " + [...new Set(hintsUsed)].join(", ")
-      : "🧠 No hints used"
+      ? "Hints: " + [...new Set(hintsUsed)].join(", ")
+      : "No hints used"
   );
 
   trackAttempt(status, attemptCount, details);
@@ -1204,7 +1134,6 @@ function checkAnswer() {
 
 function checkDetectiveAnswer() {
   const words = document.querySelectorAll(".detective-word");
-
   let correctCount = 0;
   let mistakesMade = false;
   let totalTargets = 0;
@@ -1221,24 +1150,14 @@ function checkDetectiveAnswer() {
       correctCount++;
     } else if (isSelected && isTarget) {
       correctCount++;
-
       w.classList.remove("selected");
       w.classList.add("locked");
       w.setAttribute("aria-pressed", "true");
-      w.style.border = "2px solid #39ff14";
-      w.style.backgroundColor = "rgba(57,255,20,0.25)";
-      w.style.color = "#064e3b";
-      w.style.fontWeight = "bold";
-      w.style.cursor = "default";
       w.tabIndex = -1;
     } else if (isSelected && !isTarget) {
       mistakesMade = true;
-
       w.classList.remove("selected");
       w.setAttribute("aria-pressed", "false");
-      w.style.border = "2px solid transparent";
-      w.style.backgroundColor = "transparent";
-      w.style.color = "inherit";
     } else if (isTarget && !isSelected) {
       emptyCount++;
     }
@@ -1251,31 +1170,32 @@ function checkDetectiveAnswer() {
 
   if (correctCount === totalTargets && totalTargets > 0) {
     status = "correct";
-    message = "🎉 Perfect APA detective work!";
+    message = "Correct. You found the APA 7 item" + (totalTargets === 1 ? "" : "s") + ".";
 
     const checkBtn = document.getElementById("btn-check");
     const retryBtn = document.getElementById("btn-retry");
-
-    if (checkBtn) checkBtn.style.display = "none";
-    if (retryBtn) retryBtn.style.display = "inline-flex";
+    if (checkBtn) checkBtn.hidden = true;
+    if (retryBtn) retryBtn.hidden = false;
 
     if (
       typeof confetti === "function" &&
       !window.matchMedia("(prefers-reduced-motion: reduce)").matches
     ) {
       confetti({
-        particleCount: 150,
-        spread: 80,
+        particleCount: 120,
+        spread: 70,
         origin: { y: 0.6 },
-        colors: ["#ec4899", "#8b5cf6", "#4ade80", "#fde047"]
+        colors: ["#007c89", "#0f766e", "#f59e0b", "#8b5cf6"]
       });
     }
   } else if (mistakesMade) {
     status = "incorrect";
     message =
-      "⚠️ Incorrect selections popped back to normal. You found " +
+      "Incorrect selections returned to normal. You found " +
       correctCount +
-      " correct item(s). Keep hunting.";
+      " correct item" +
+      (correctCount === 1 ? "" : "s") +
+      ". Keep hunting.";
   } else if (emptyCount > 0) {
     status = "partial";
     message =
@@ -1284,14 +1204,19 @@ function checkDetectiveAnswer() {
       " so far.";
   }
 
-  const fb = document.getElementById("feedback");
+  setFeedback(message, status);
+  trackAttempt(status, attemptCount, ["Score: " + correctCount + "/" + totalTargets]);
+}
 
+function setFeedback(message, status) {
+  const fb = document.getElementById("feedback");
   if (fb) {
     fb.textContent = message;
     fb.className = "feedback " + status;
+    fb.setAttribute("role", "status");
+    fb.setAttribute("aria-live", "polite");
+    fb.setAttribute("aria-atomic", "true");
   }
-
-  trackAttempt(status, attemptCount, ["Score: " + correctCount + "/" + totalTargets]);
 }
 
 function retryActivity() {
@@ -1328,13 +1253,11 @@ function trackAttempt(status, attempt, details) {
 function switchTab(tab) {
   const tabS = document.getElementById("tab-student");
   const tabT = document.getElementById("tab-teacher");
-
   const pS = document.getElementById("panel-student");
   const pT = document.getElementById("panel-teacher");
 
   if (tabS) tabS.classList.toggle("active", tab === "student");
   if (tabT) tabT.classList.toggle("active", tab === "teacher");
-
   if (pS) pS.classList.toggle("hidden", tab !== "student");
   if (pT) pT.classList.toggle("hidden", tab !== "teacher");
 
@@ -1346,19 +1269,24 @@ function promptTeacherPin() {
   const input = document.getElementById("pin-input");
   const error = document.getElementById("pin-error");
 
-  if (modal) modal.classList.remove("hidden");
+  lastFocusedBeforePin = document.activeElement;
 
+  if (modal) modal.classList.remove("hidden");
   if (error) error.textContent = "";
 
   if (input) {
     input.value = "";
-    input.focus();
+    setTimeout(() => input.focus(), 50);
   }
 }
 
 function closePinModal() {
   const modal = document.getElementById("pin-modal");
   if (modal) modal.classList.add("hidden");
+
+  if (lastFocusedBeforePin && typeof lastFocusedBeforePin.focus === "function") {
+    lastFocusedBeforePin.focus();
+  }
 }
 
 function submitPin() {
@@ -1371,7 +1299,6 @@ function submitPin() {
   } else {
     const err = document.getElementById("pin-error");
     if (err) err.textContent = "Incorrect PIN.";
-
     input.value = "";
     input.focus();
   }
@@ -1386,13 +1313,12 @@ function loadTeacherData() {
   const container = document.getElementById("teacher-results");
   if (!container) return;
 
-  container.innerHTML = "<p>Loading results...</p>";
+  container.innerHTML = "<p>Loading results…</p>";
 
   fetch(TRACKING_CSV_URL + "&t=" + Date.now())
     .then(r => r.text())
     .then(text => {
       const rows = parseCSV(text);
-
       const filtered = sessionStart
         ? rows.filter(r => new Date(r.Timestamp).getTime() >= sessionStart)
         : rows;
@@ -1414,33 +1340,28 @@ function renderTeacherTable(rows) {
   }
 
   const headers = ["Timestamp", "Name", "Game_ID", "Attempt", "Status", "Details"];
-
-  let html = "<div id='results-table-wrap'><table id='results-table'><thead><tr>";
+  let html = "<div id='results-table-wrap'><table id='results-table'><caption class='sr-only'>Student APA 7 activity attempts</caption><thead><tr>";
 
   headers.forEach(h => {
-    html += "<th>" + h + "</th>";
+    html += "<th scope='col'>" + safeFormatHTML(h) + "</th>";
   });
 
   html += "</tr></thead><tbody>";
 
   rows.forEach(row => {
     html += "<tr>";
-
     headers.forEach(h => {
       html += "<td>" + safeFormatHTML(row[h] || "") + "</td>";
     });
-
     html += "</tr>";
   });
 
   html += "</tbody></table></div>";
-
   container.innerHTML = html;
 }
 
 setInterval(() => {
   const t = document.getElementById("panel-teacher");
-
   if (t && !t.classList.contains("hidden")) {
     loadTeacherData();
   }
@@ -1455,16 +1376,17 @@ function shuffle(arr) {
     const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-
   return arr;
 }
 
 function showError(msg) {
   showScreen("screen-error");
-
   const errEl = document.getElementById("error-message");
+  if (errEl) errEl.textContent = msg;
+}
 
-  if (errEl) {
-    errEl.textContent = msg;
-  }
+function safeText(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
