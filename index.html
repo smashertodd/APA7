@@ -1,77 +1,73 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-NZ">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>APA 7 Arcade</title>
-
-  <link rel="stylesheet" href="style.css?v=apa7-udl-1" />
-
+  <link rel="stylesheet" href="style.css?v=apa7-udl-2" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
 <body>
   <a class="skip-link" href="#main-content">Skip to main activity</a>
 
-  <div class="top-controls" aria-label="Game controls">
-    <button id="btn-readable-mode" class="neon-toggle" type="button" aria-pressed="false">
-      Readable Mode
-    </button>
+  <header class="site-header" role="banner">
+    <div class="site-header-inner">
+      <div>
+        <p class="eyebrow">APA 7 practice</p>
+        <h1 id="app-title">APA 7 Arcade</h1>
+      </div>
 
-    <button id="tab-student" class="neon-toggle active" type="button">
-      ← Back to Game
-    </button>
-
-    <button id="tab-teacher" class="neon-toggle" type="button">
-      Teacher Login 🔐
-    </button>
-  </div>
+      <nav class="top-controls" aria-label="Game controls">
+        <button id="btn-readable-mode" class="control-button" type="button" aria-pressed="false">
+          Readable Mode
+        </button>
+        <button id="tab-student" class="control-button active" type="button">
+          Back to Game
+        </button>
+        <button id="tab-teacher" class="control-button" type="button">
+          Teacher Login
+        </button>
+      </nav>
+    </div>
+  </header>
 
   <main id="app">
-    <h1 id="app-title">APA 7 Arcade</h1>
-
     <div id="main-content">
-      <!-- Student Panel -->
       <section id="panel-student" aria-label="Student game area">
-        <!-- Name Entry -->
         <div id="screen-name" class="screen active">
           <div class="card center-card" id="name-section">
+            <h2 class="section-heading">Start practising</h2>
             <p class="subtitle">Enter your name to start practising APA 7 referencing.</p>
-
-            <label class="sr-only" for="input-name">First name</label>
-            <input id="input-name" type="text" placeholder="First name" autocomplete="off" />
-
+            <label for="input-name">First name</label>
+            <input id="input-name" type="text" placeholder="First name" autocomplete="given-name" />
             <button id="btn-start" class="btn btn-primary" type="button">Start</button>
           </div>
         </div>
 
-        <!-- Loading -->
-        <div id="screen-loading" class="screen">
+        <div id="screen-loading" class="screen" aria-live="polite">
           <div class="card center-card">
-            <div class="spinner" aria-label="Loading"></div>
+            <div class="spinner" aria-hidden="true"></div>
             <p class="subtitle loading-text">Loading APA 7 activities…</p>
           </div>
         </div>
 
-        <!-- Library -->
         <div id="screen-library" class="screen">
           <div class="card">
-            <h2 class="section-heading">Choose an APA 7 Activity</h2>
+            <h2 class="section-heading">Choose an APA 7 activity</h2>
+            <p class="subtitle">Select an activity. You can use a mouse, touch, or keyboard.</p>
             <div id="library-list" class="library-list" aria-label="Available APA 7 activities"></div>
           </div>
         </div>
 
-        <!-- Activity Screen -->
         <div id="screen-activity" class="screen">
           <div class="card">
             <div class="activity-header">
               <h2 id="activity-title" class="section-heading">Activity Title</h2>
-              <button id="btn-library" class="btn btn-ghost btn-sm" type="button">← All activities</button>
+              <button id="btn-library" class="btn btn-secondary btn-sm" type="button">All activities</button>
             </div>
 
             <p class="instruction" id="game-instructions"></p>
-
             <p class="instruction accessibility-instruction">
               Accessibility option: select a choice, then select an answer space. You can also use Tab and Enter instead of dragging.
             </p>
@@ -83,74 +79,73 @@
               </section>
 
               <section class="panel-right" aria-labelledby="answer-heading">
-                <h3 id="answer-heading">Answer Area</h3>
+                <h3 id="answer-heading">Answer area</h3>
                 <div id="drop-zone" class="pool drop-zone-slots" aria-label="Answer area"></div>
               </section>
             </div>
 
             <div class="activity-footer">
-              <button id="btn-check" class="btn primary" type="button">Check Answer</button>
-              <button id="btn-retry" class="btn secondary" type="button" style="display:none;">Retry</button>
-              <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+              <button id="btn-check" class="btn btn-primary" type="button">Check answer</button>
+              <button id="btn-retry" class="btn btn-secondary" type="button" hidden>Retry activity</button>
+              <div id="feedback" class="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
             </div>
           </div>
         </div>
 
-        <!-- Error Screen -->
         <div id="screen-error" class="screen">
           <div class="card center-card">
-            <h2 style="color:#fca5a5;">Oops!</h2>
-            <p id="error-message">Something went wrong.</p>
-            <button onclick="location.reload()" class="btn btn-primary" type="button" style="margin-top:15px;">Refresh Page</button>
+            <h2 class="section-heading">Something went wrong</h2>
+            <p id="error-message">The activity could not load.</p>
+            <button onclick="location.reload()" class="btn btn-primary" type="button">Refresh page</button>
           </div>
         </div>
       </section>
 
-      <!-- Teacher Panel -->
       <section id="panel-teacher" class="hidden" aria-label="Teacher dashboard">
         <div class="card">
           <div class="teacher-header">
-            <h2>Teacher Dashboard</h2>
+            <div>
+              <h2 class="section-heading">Teacher dashboard</h2>
+              <p class="subtitle">View recent attempts and edit the activity sheet.</p>
+            </div>
 
-            <a
-              href="https://docs.google.com/spreadsheets/d/1itEi1-GDDIqV7jlSkMfEoVUvTM7kBNVLpJ-FXmNwpQQ/edit?gid=0#gid=0"
-              target="_blank"
-              class="btn btn-sm"
-            >
-              Edit APA Activities Sheet
-            </a>
-
-            <button id="btn-reset-session" class="btn btn-secondary btn-sm" type="button">
-              Refresh Current Session
-            </button>
+            <div class="teacher-actions">
+              <a
+                href="https://docs.google.com/spreadsheets/d/1itEi1-GDDIqV7jlSkMfEoVUvTM7kBNVLpJ-FXmNwpQQ/edit?gid=0#gid=0"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-secondary btn-sm"
+              >
+                Edit APA Activities Sheet
+              </a>
+              <button id="btn-reset-session" class="btn btn-secondary btn-sm" type="button">
+                Refresh current session
+              </button>
+            </div>
           </div>
 
-          <div id="teacher-results" class="results-container">
-            <p>Loading results...</p>
+          <div id="teacher-results" class="results-container" aria-live="polite">
+            <p>Loading results…</p>
           </div>
         </div>
       </section>
     </div>
   </main>
 
-  <!-- PIN Modal -->
-  <div id="pin-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="pin-title">
-    <div id="pin-modal-box">
-      <h3 id="pin-title">Teacher Access</h3>
-      <p>Enter your PIN to continue.</p>
-
-      <label class="sr-only" for="pin-input">Teacher PIN</label>
-      <input id="pin-input" type="password" maxlength="12" placeholder="••••••" />
-
+  <div id="pin-modal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="pin-title" aria-describedby="pin-description">
+    <div id="pin-modal-box" role="document">
+      <h3 id="pin-title">Teacher access</h3>
+      <p id="pin-description">Enter your PIN to continue.</p>
+      <label for="pin-input">Teacher PIN</label>
+      <input id="pin-input" type="password" maxlength="12" placeholder="PIN" autocomplete="off" />
       <p id="pin-error" class="pin-error" role="alert" aria-live="polite"></p>
-
       <div class="pin-actions">
-        <button id="btn-pin-cancel" type="button">Cancel</button>
-        <button id="btn-pin-submit" type="button">Enter</button>
+        <button id="btn-pin-cancel" class="btn btn-secondary" type="button">Cancel</button>
+        <button id="btn-pin-submit" class="btn btn-primary" type="button">Enter</button>
       </div>
     </div>
   </div>
 
-  <script src="app.js?v=apa7-udl-1"></script>
+  <script src="app.js?v=apa7-udl-2"></script>
 </body>
 </html>
