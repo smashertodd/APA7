@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>APA 7 Arcade</title>
-  <link rel="stylesheet" href="style.css?v=apa7-udl-2" />
+  <link rel="stylesheet" href="style.css?v=apa7-udl-3" />
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 
@@ -19,9 +19,6 @@
       </div>
 
       <nav class="top-controls" aria-label="Game controls">
-        <button id="btn-readable-mode" class="control-button" type="button" aria-pressed="false">
-          Readable Mode
-        </button>
         <button id="tab-student" class="control-button active" type="button">
           Back to Game
         </button>
@@ -39,8 +36,10 @@
           <div class="card center-card" id="name-section">
             <h2 class="section-heading">Start practising</h2>
             <p class="subtitle">Enter your name to start practising APA 7 referencing.</p>
+
             <label for="input-name">First name</label>
             <input id="input-name" type="text" placeholder="First name" autocomplete="given-name" />
+
             <button id="btn-start" class="btn btn-primary" type="button">Start</button>
           </div>
         </div>
@@ -68,6 +67,7 @@
             </div>
 
             <p class="instruction" id="game-instructions"></p>
+
             <p class="instruction accessibility-instruction">
               Accessibility option: select a choice, then select an answer space. You can also use Tab and Enter instead of dragging.
             </p>
@@ -118,6 +118,7 @@
               >
                 Edit APA Activities Sheet
               </a>
+
               <button id="btn-reset-session" class="btn btn-secondary btn-sm" type="button">
                 Refresh current session
               </button>
@@ -136,9 +137,12 @@
     <div id="pin-modal-box" role="document">
       <h3 id="pin-title">Teacher access</h3>
       <p id="pin-description">Enter your PIN to continue.</p>
+
       <label for="pin-input">Teacher PIN</label>
       <input id="pin-input" type="password" maxlength="12" placeholder="PIN" autocomplete="off" />
+
       <p id="pin-error" class="pin-error" role="alert" aria-live="polite"></p>
+
       <div class="pin-actions">
         <button id="btn-pin-cancel" class="btn btn-secondary" type="button">Cancel</button>
         <button id="btn-pin-submit" class="btn btn-primary" type="button">Enter</button>
@@ -146,6 +150,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=apa7-udl-2"></script>
+  <script src="app.js?v=apa7-udl-3"></script>
 </body>
 </html>
