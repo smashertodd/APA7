@@ -154,7 +154,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.body.appendChild(neonModalOverlay);
   showScreen("screen-name");
-  restoreReadableModePreference();
 
   const safeAdd = (id, event, handler) => {
     const el = document.getElementById(id);
@@ -165,7 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
   safeAdd("btn-check", "click", checkAnswer);
   safeAdd("btn-retry", "click", retryActivity);
   safeAdd("btn-library", "click", () => showLibrary());
-  safeAdd("btn-readable-mode", "click", toggleReadableMode);
   safeAdd("tab-student", "click", () => switchTab("student"));
   safeAdd("tab-teacher", "click", () => promptTeacherPin());
   safeAdd("btn-pin-submit", "click", submitPin);
@@ -187,39 +185,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
-
-/* ============================================================
-   Readable mode
-============================================================ */
-
-function toggleReadableMode() {
-  const btn = document.getElementById("btn-readable-mode");
-  const enabled = document.body.classList.toggle("readable-mode");
-
-  if (btn) {
-    btn.setAttribute("aria-pressed", enabled ? "true" : "false");
-    btn.textContent = enabled ? "Colour Mode" : "Readable Mode";
-  }
-
-  try {
-    localStorage.setItem("apa7-readable-mode", enabled ? "true" : "false");
-  } catch (e) {}
-}
-
-function restoreReadableModePreference() {
-  try {
-    const enabled = localStorage.getItem("apa7-readable-mode") === "true";
-    const btn = document.getElementById("btn-readable-mode");
-
-    if (enabled) {
-      document.body.classList.add("readable-mode");
-      if (btn) {
-        btn.setAttribute("aria-pressed", "true");
-        btn.textContent = "Colour Mode";
-      }
-    }
-  } catch (e) {}
-}
 
 /* ============================================================
    Screens and session
