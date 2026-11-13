@@ -758,6 +758,7 @@ function renderParagraphMode(game, dropZone) {
 
   const paraBuilder = document.createElement("div");
   paraBuilder.className = "gap-fill-box paragraph-answer";
+  paraBuilder.setAttribute("aria-label", "APA 7 reference answer area with hanging indent");
 
   game.parts.forEach((part, i) => {
     const color = COLORS[i % COLORS.length];
@@ -767,13 +768,13 @@ function renderParagraphMode(game, dropZone) {
     labelDiv.style.backgroundColor = color;
 
     const labelText = document.createElement("span");
-    labelText.innerHTML = safeFormatHTML((i + 1) + ". " + (part.label || "Part " + (i + 1)));
+    labelText.innerHTML = safeFormatHTML(part.label || "Part");
     labelDiv.appendChild(labelText);
 
     if (part.hint) {
-      const hintBtn = createHintButton("Show hint for " + stripFormattingTags(part.label || "part " + (i + 1)), () => {
+      const hintBtn = createHintButton("Show hint for " + stripFormattingTags(part.label || "part"), () => {
         showNeonHint("Hint for " + stripFormattingTags(part.label || "this part") + ":\n\n" + part.hint);
-        hintsUsed.push("Hint (" + stripFormattingTags(part.label || "Part " + (i + 1)) + ")");
+        hintsUsed.push("Hint (" + stripFormattingTags(part.label || "Part") + ")");
       });
       hintBtn.className = "hint-btn-small";
       labelDiv.appendChild(hintBtn);
